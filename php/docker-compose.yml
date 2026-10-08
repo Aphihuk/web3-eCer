@@ -1,0 +1,13 @@
+version: "3.9"
+
+services:
+  web:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: learnbadge_web
+    ports:
+      - "90:80"
+    volumes:
+      - .:/var/www/html
+    restart: unless-stopped

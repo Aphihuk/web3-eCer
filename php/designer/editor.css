@@ -1,0 +1,1054 @@
+/*
+ * NFT LAO ຈຳກັດ — Certificate Designer
+ *
+ * Foundations come from css/tokens.css (loaded before this file in editor.php).
+ * Nothing here redefines a token. The small compat block at the bottom maps the
+ * three legacy names that editor.js still injects via inline styles.
+ *
+ * Surface allocation is deliberate, because --muted only clears 4.5:1 on two of
+ * the three ramps:
+ *   --bg-base  #0a0a0f   muted = 4.81:1   workspace, inputs
+ *   --bg-surface #111118 muted = 4.58:1   panels
+ *   --bg-card  #16161f   muted = 4.38:1   FAIL -> small text here uses --text
+ * --violet is 3.15:1 on card, so it is used for borders, fills and active
+ * marks only, never for small label text.
+ */
+
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+html, body {
+  height: 100%;
+  overflow: hidden;
+  overscroll-behavior: none;
+}
+
+body {
+  background: var(--bg-base);
+  color: var(--text);
+  font-family: var(--font-lao);
+  font-size: 0.875rem;
+  line-height: 1.7;
+  -webkit-font-smoothing: antialiased;
+}
+
+#app {
+  display: flex;
+  flex-direction: column;
+  height: 100vh;
+  height: 100dvh;
+}
+
+/* ─────────────────────────────────────────────────────────────
+   Top bar
+   ───────────────────────────────────────────────────────────── */
+
+#topbar {
+  --topbar-h: 56px;
+  display: flex;
+  align-items: center;
+  gap: var(--space-4);
+  height: var(--topbar-h);
+  padding: 0 var(--space-4);
+  background: var(--bg-surface);
+  border-bottom: 1px solid var(--border);
+  flex-shrink: 0;
+  z-index: var(--z-sticky);
+}
+
+.topbar-left,
+.topbar-center,
+.topbar-right {
+  display: flex;
+  align-items: center;
+  gap: var(--space-1);
+}
+
+.topbar-left  { flex-shrink: 0; }
+.topbar-center{ flex: 1; justify-content: center; min-width: 0; }
+.topbar-right { flex-shrink: 0; }
+
+.logo {
+  font-family: var(--font-display);
+  font-weight: 700;
+  font-size: 1rem;
+  letter-spacing: 0.01em;
+  color: var(--cyan);
+}
+
+.page-title {
+  font-size: 0.82rem;
+  color: var(--muted);
+  white-space: nowrap;
+}
+
+/* Vertical rule between control clusters */
+.divider {
+  width: 1px;
+  align-self: stretch;
+  margin: 0 var(--space-2);
+  background: var(--border);
+  flex-shrink: 0;
+}
+
+/* A labelled group of related icon buttons */
+.tool-cluster {
+  display: flex;
+  align-items: center;
+  gap: 2px;
+  padding: 3px;
+  background: var(--bg-base);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-md);
+}
+
+.tb-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: var(--space-2);
+  height: 32px;
+  min-width: 32px;
+  padding: 0 var(--space-2);
+  background: transparent;
+  border: 1px solid transparent;
+  border-radius: var(--radius-sm);
+  color: var(--muted);
+  font-family: var(--font-lao);
+  font-size: 0.8rem;
+  font-weight: 500;
+  line-height: 1;
+  cursor: pointer;
+  white-space: nowrap;
+  transition: background-color var(--duration-fast) var(--ease-standard),
+              color var(--duration-fast) var(--ease-standard),
+              border-color var(--duration-fast) var(--ease-standard);
+}
+
+.tb-btn:hover:not(:disabled) {
+  background: var(--bg-card);
+  color: var(--text);
+}
+
+.tb-btn:active:not(:disabled) { background: var(--bg-surface); }
+
+.tb-btn:disabled {
+  opacity: 0.45;
+  cursor: not-allowed;
+}
+
+.tb-btn svg { flex-shrink: 0; }
+
+/* Toggle button reflects state in its own fill, not just color */
+.tb-btn[aria-pressed="true"] {
+  background: var(--violet-glow);
+  border-color: var(--violet);
+  color: var(--violet-dim);
+}
+
+/* Labelled action, for the file commands where the verb matters */
+.tb-btn.action {
+  border-color: var(--border);
+  background: var(--bg-card);
+  color: var(--text);
+  padding: 0 var(--space-3);
+}
+
+.tb-btn.action:hover:not(:disabled) {
+  border-color: var(--violet);
+  background: var(--bg-surface);
+}
+
+.tb-btn.primary {
+  background: var(--violet);
+  border-color: var(--violet);
+  color: var(--text);
+  font-weight: 700;
+  padding: 0 var(--space-4);
+}
+
+.tb-btn.primary:hover:not(:disabled) { background: #6d28d9; }
+
+.tb-btn.primary:active:not(:disabled) {
+  background: #5b21b6;
+  transform: translateY(0);
+}
+
+.zoom-label {
+  min-width: 3.25rem;
+  text-align: center;
+  font-family: var(--font-mono);
+  font-size: 0.72rem;
+  color: var(--text);
+  letter-spacing: 0.02em;
+}
+
+/* ─────────────────────────────────────────────────────────────
+   Main layout
+   ───────────────────────────────────────────────────────────── */
+
+#main {
+  display: flex;
+  flex: 1;
+  min-height: 0;
+  overflow: hidden;
+}
+
+#sidebar-left,
+#sidebar-right {
+  width: 264px;
+  flex-shrink: 0;
+  background: var(--bg-surface);
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  scrollbar-color: var(--border) transparent;
+  scrollbar-width: thin;
+}
+
+#sidebar-left  { border-right: 1px solid var(--border); }
+#sidebar-right { width: 288px; border-left: 1px solid var(--border); }
+
+.panel-section {
+  padding: var(--space-4);
+  border-bottom: 1px solid var(--border);
+}
+
+.panel-section:last-child { border-bottom: none; }
+
+/*
+ * Lao script has above/below vowel marks bound to their base consonant.
+ * Letter-spacing pulls those marks away from the glyph they belong to, so
+ * panel headings stay in normal case with no tracking.
+ */
+.panel-title {
+  font-size: 0.8rem;
+  font-weight: 700;
+  color: var(--text);
+  line-height: 1.4;
+  margin-bottom: var(--space-3);
+}
+
+/* ── Tool palette ── */
+
+.tool-group {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: var(--space-2);
+}
+
+.tool-btn {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: var(--space-1);
+  min-height: 58px;
+  padding: var(--space-2) var(--space-1);
+  background: var(--bg-base);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  color: var(--muted);
+  font-family: var(--font-lao);
+  font-size: 0.7rem;
+  line-height: 1.3;
+  cursor: pointer;
+  text-align: center;
+  transition: background-color var(--duration-fast) var(--ease-standard),
+              border-color var(--duration-fast) var(--ease-standard),
+              color var(--duration-fast) var(--ease-standard);
+}
+
+.tool-btn:hover {
+  background: var(--bg-card);
+  color: var(--text);
+  border-color: var(--border-cyan);
+}
+
+.tool-btn.active {
+  background: var(--violet-glow);
+  border-color: var(--violet);
+  color: var(--violet-dim);
+}
+
+.tool-btn[data-tool="draw"].active {
+  background: rgba(244, 63, 94, 0.14);
+  border-color: var(--danger);
+  color: var(--danger);
+}
+
+/* ── Template picker ── */
+
+.template-grid {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-1);
+}
+
+.template-item {
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+  padding: var(--space-2);
+  background: transparent;
+  border: 1px solid transparent;
+  border-radius: var(--radius-sm);
+  cursor: pointer;
+  text-align: left;
+  width: 100%;
+  font-family: var(--font-lao);
+  transition: background-color var(--duration-fast) var(--ease-standard),
+              border-color var(--duration-fast) var(--ease-standard);
+}
+
+.template-item:hover { background: var(--bg-card); }
+
+.template-item.active {
+  background: var(--violet-glow);
+  border-color: var(--violet);
+}
+
+.template-thumb {
+  width: 52px;
+  height: 34px;
+  flex-shrink: 0;
+  border-radius: 3px;
+  object-fit: cover;
+  background: var(--bg-base);
+  border: 1px solid var(--border);
+}
+
+.template-item .tname {
+  font-size: 0.78rem;
+  color: var(--text);
+  line-height: 1.35;
+}
+
+.template-item .tname small {
+  display: block;
+  font-size: 0.66rem;
+  color: var(--muted);
+  line-height: 1.35;
+}
+
+.template-item.active .tname small { color: var(--muted); }
+
+/* ── Layers ── */
+
+.layer-list {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  max-height: 232px;
+  overflow-y: auto;
+  scrollbar-color: var(--border) transparent;
+  scrollbar-width: thin;
+}
+
+.layer-item {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  padding: var(--space-2);
+  border: 1px solid transparent;
+  border-radius: var(--radius-sm);
+  background: transparent;
+  cursor: pointer;
+  font-size: 0.76rem;
+  color: var(--text);
+  transition: background-color var(--duration-fast) var(--ease-standard),
+              border-color var(--duration-fast) var(--ease-standard);
+}
+
+.layer-item:hover { background: var(--bg-card); }
+
+.layer-item.active {
+  background: var(--violet-glow);
+  border-color: var(--violet);
+}
+
+.layer-item[draggable="true"] { cursor: grab; }
+.layer-item[draggable="true"]:active { cursor: grabbing; }
+
+.layer-item .ltype {
+  width: 16px;
+  height: 16px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  color: var(--muted);
+}
+
+.layer-item.active .ltype { color: var(--violet-dim); }
+
+.layer-item .lname {
+  flex: 1;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+/* Rendered as direct children of .layer-item by renderLayers(), not wrapped */
+.layer-item .leye,
+.layer-item .llock {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 24px;
+  height: 24px;
+  flex-shrink: 0;
+  padding: 0;
+  border: none;
+  border-radius: 4px;
+  background: transparent;
+  color: var(--muted);
+  cursor: pointer;
+  opacity: 0.7;
+  transition: opacity var(--duration-fast) var(--ease-standard),
+              background-color var(--duration-fast) var(--ease-standard),
+              color var(--duration-fast) var(--ease-standard);
+}
+
+.layer-item .leye { margin-left: auto; }
+
+.layer-item .leye:hover,
+.layer-item .llock:hover {
+  opacity: 1;
+  background: var(--bg-base);
+  color: var(--text);
+}
+
+.drag-indicator {
+  height: 2px;
+  margin: -1px 0;
+  border-radius: 1px;
+  background: var(--violet);
+  pointer-events: none;
+}
+
+/* ── History ── */
+
+#historyPanel {
+  display: flex;
+  flex-direction: column;
+  gap: 1px;
+  max-height: 112px;
+  overflow-y: auto;
+  font-size: 0.72rem;
+  scrollbar-color: var(--border) transparent;
+  scrollbar-width: thin;
+}
+
+#historyPanel div {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  padding: var(--space-1) var(--space-2);
+  border-radius: 4px;
+  color: var(--muted);
+  cursor: pointer;
+  font-family: var(--font-mono);
+  font-size: 0.7rem;
+}
+
+#historyPanel div:hover { background: var(--bg-card); color: var(--text); }
+
+/* Current step is marked by weight plus the marker, not colour alone */
+#historyPanel div.is-current {
+  color: var(--text);
+  font-weight: 700;
+}
+
+#historyPanel .hmark {
+  width: 5px;
+  height: 5px;
+  flex-shrink: 0;
+  border-radius: 50%;
+  background: transparent;
+}
+
+#historyPanel div.is-current .hmark { background: var(--violet-dim); }
+
+/* ─────────────────────────────────────────────────────────────
+   Canvas workspace
+   ───────────────────────────────────────────────────────────── */
+
+#canvas-area {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  overflow: auto;
+  padding: var(--space-6);
+  background: var(--bg-base);
+}
+
+/*
+ * The canvas is user artwork, not a UI card. A hairline plus one restrained
+ * ambient shadow is what separates a sheet from the workspace; nothing else in
+ * this surface gets a resting shadow.
+ */
+#canvas-wrap {
+  line-height: 0;
+  border-radius: 2px;
+  border: 1px solid var(--border);
+  box-shadow: 0 24px 64px rgba(0, 0, 0, 0.45);
+}
+
+#canvas { display: block; }
+
+/* ─────────────────────────────────────────────────────────────
+   Inspector
+   ───────────────────────────────────────────────────────────── */
+
+#props-panel,
+#settings-panel {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3);
+}
+
+.prop-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-3);
+  font-size: 0.78rem;
+  min-height: 30px;
+}
+
+.prop-row > span {
+  color: var(--muted);
+  flex-shrink: 0;
+  min-width: 4.5rem;
+}
+
+/*
+ * Empty state teaches rather than reports. --muted clears 4.5:1 here because
+ * this panel sits on --bg-surface, not --bg-card.
+ */
+.prop-empty {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: var(--space-3);
+  padding: var(--space-6) var(--space-4);
+  text-align: center;
+  font-size: 0.78rem;
+  line-height: 1.7;
+  color: var(--muted);
+}
+
+.prop-empty svg { color: var(--border); }
+
+.prop-empty strong {
+  display: block;
+  color: var(--text);
+  font-weight: 700;
+}
+
+.prop-section-title {
+  margin-top: var(--space-2);
+  margin-bottom: var(--space-1);
+  font-size: 0.7rem;
+  font-weight: 700;
+  color: var(--text);
+  line-height: 1.4;
+}
+
+.prop-row input[type="text"],
+.prop-row input[type="number"],
+.prop-row select {
+  flex: 1;
+  min-width: 0;
+  padding: var(--space-1) var(--space-2);
+  background: var(--bg-base);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  color: var(--text);
+  font-family: var(--font-lao);
+  font-size: 0.78rem;
+  line-height: 1.6;
+}
+
+.prop-row input::placeholder { color: var(--muted); opacity: 1; }
+
+/* flex:0 would set flex-basis to 0 and collapse the field; pin the basis instead */
+.prop-row input[type="number"] {
+  flex: 0 0 68px;
+  width: 68px;
+  font-family: var(--font-mono);
+  font-size: 0.75rem;
+}
+
+.prop-row input:disabled,
+.prop-row select:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.prop-row input[type="checkbox"] {
+  width: 16px;
+  height: 16px;
+  accent-color: var(--violet);
+  cursor: pointer;
+}
+
+.color-pill {
+  width: 60px;
+  height: 30px;
+  flex-shrink: 0;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  cursor: pointer;
+  background-clip: padding-box;
+}
+
+.prop-delete {
+  margin-top: var(--space-2);
+  padding: var(--space-2) var(--space-3);
+  background: transparent;
+  border: 1px solid var(--danger);
+  border-radius: var(--radius-sm);
+  color: var(--danger);
+  font-family: var(--font-lao);
+  font-size: 0.75rem;
+  font-weight: 500;
+  cursor: pointer;
+  transition: background-color var(--duration-fast) var(--ease-standard),
+              color var(--duration-fast) var(--ease-standard);
+}
+
+.prop-delete:hover {
+  background: var(--danger);
+  color: #fff;
+}
+
+/* Range slider */
+.prop-row input[type="range"] {
+  flex: 1;
+  min-width: 0;
+  height: 4px;
+  padding: 0;
+  border: none;
+  border-radius: 2px;
+  background: var(--border);
+  cursor: pointer;
+  -webkit-appearance: none;
+  appearance: none;
+}
+
+.prop-row input[type="range"]::-webkit-slider-thumb {
+  -webkit-appearance: none;
+  appearance: none;
+  width: 14px;
+  height: 14px;
+  border: none;
+  border-radius: 50%;
+  background: var(--violet);
+  cursor: pointer;
+}
+
+.prop-row input[type="range"]::-moz-range-thumb {
+  width: 14px;
+  height: 14px;
+  border: none;
+  border-radius: 50%;
+  background: var(--violet);
+  cursor: pointer;
+}
+
+/* ─────────────────────────────────────────────────────────────
+   Overlays
+   ───────────────────────────────────────────────────────────── */
+
+.modal-overlay {
+  position: fixed;
+  inset: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: var(--space-4);
+  background: var(--bg-overlay);
+  z-index: var(--z-modal-backdrop);
+}
+
+.modal-box {
+  width: 100%;
+  max-width: 480px;
+  max-height: 84vh;
+  overflow-y: auto;
+  padding: var(--space-5);
+  background: var(--bg-surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-lg);
+  box-shadow: 0 32px 64px rgba(0, 0, 0, 0.5);
+}
+
+.modal-title {
+  font-size: 1.05rem;
+  font-weight: 700;
+  line-height: 1.4;
+  color: var(--text);
+  margin-bottom: var(--space-2);
+}
+
+/* Success is scoped to the upload result, not every modal heading */
+.modal-title.is-success { color: var(--success); }
+
+.modal-close-btn {
+  margin-top: var(--space-4);
+  padding: var(--space-2) var(--space-4);
+  background: var(--bg-card);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  color: var(--text);
+  font-family: var(--font-lao);
+  font-size: 0.82rem;
+  font-weight: 500;
+  cursor: pointer;
+  transition: background-color var(--duration-fast) var(--ease-standard),
+              border-color var(--duration-fast) var(--ease-standard);
+}
+
+.modal-close-btn:hover {
+  background: var(--bg-base);
+  border-color: var(--violet);
+}
+
+/* ── Context menu ── */
+
+#ctxMenu {
+  position: fixed;
+  min-width: 180px;
+  padding: var(--space-1) 0;
+  background: var(--bg-surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-md);
+  box-shadow: 0 12px 32px rgba(0, 0, 0, 0.5);
+  font-size: 0.8rem;
+  z-index: var(--z-dropdown);
+}
+
+.ctx-item {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-4);
+  padding: var(--space-2) var(--space-4);
+  color: var(--text);
+  cursor: pointer;
+  line-height: 1.5;
+}
+
+.ctx-item:hover { background: var(--bg-card); }
+
+.ctx-item .ctx-key {
+  font-family: var(--font-mono);
+  font-size: 0.68rem;
+  color: var(--muted);
+}
+
+.ctx-divider {
+  height: 1px;
+  margin: var(--space-1) 0;
+  background: var(--border);
+}
+
+/* ── Preview ── */
+
+#previewOverlay {
+  position: fixed;
+  inset: 0;
+  display: none;
+  align-items: center;
+  justify-content: center;
+  padding: var(--space-4);
+  background: var(--bg-overlay);
+  cursor: zoom-out;
+  z-index: var(--z-modal-backdrop);
+}
+
+#previewOverlay.is-open { display: flex; }
+
+#previewImg {
+  max-width: 95vw;
+  max-height: 95vh;
+  border-radius: var(--radius-sm);
+  box-shadow: 0 32px 64px rgba(0, 0, 0, 0.6);
+}
+
+/* ── Draw mode notice ── */
+
+#drawIndicator {
+  position: fixed;
+  bottom: var(--space-5);
+  left: 50%;
+  transform: translateX(-50%);
+  display: none;
+  align-items: center;
+  gap: var(--space-2);
+  padding: var(--space-2) var(--space-4);
+  background: var(--violet);
+  color: #fff;
+  border-radius: var(--radius-full);
+  font-size: 0.8rem;
+  box-shadow: 0 8px 24px rgba(124, 58, 237, 0.4);
+  z-index: var(--z-toast);
+}
+
+#drawIndicator.is-open { display: flex; }
+
+/* ── Toast / auto-save restore (created by editor.js) ── */
+
+#toastMsg {
+  position: fixed;
+  bottom: var(--space-5);
+  right: var(--space-5);
+  max-width: 22rem;
+  padding: var(--space-3) var(--space-4);
+  background: var(--bg-surface);
+  border: 1px solid var(--violet);
+  border-radius: var(--radius-sm);
+  color: var(--text);
+  font-size: 0.8rem;
+  line-height: 1.6;
+  box-shadow: 0 12px 32px rgba(0, 0, 0, 0.5);
+  opacity: 0;
+  transition: opacity var(--duration-base) var(--ease-standard);
+  z-index: var(--z-toast);
+  pointer-events: none;
+}
+
+#toastMsg.is-visible { opacity: 1; }
+
+#restoreBanner {
+  position: fixed;
+  bottom: var(--space-4);
+  left: var(--space-4);
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+  max-width: min(30rem, calc(100vw - 2rem));
+  padding: var(--space-3) var(--space-4);
+  background: var(--bg-surface);
+  border: 1px solid var(--violet);
+  border-radius: var(--radius-md);
+  color: var(--text);
+  font-size: 0.8rem;
+  box-shadow: 0 12px 32px rgba(0, 0, 0, 0.5);
+  z-index: var(--z-toast);
+}
+
+/* ─────────────────────────────────────────────────────────────
+   Colour picker popover
+   ───────────────────────────────────────────────────────────── */
+
+.color-picker-popup {
+  position: fixed;
+  width: 218px;
+  padding: 10px;
+  background: var(--bg-surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-md);
+  box-shadow: 0 12px 32px rgba(0, 0, 0, 0.5);
+  font-family: var(--font-lao);
+  z-index: var(--z-tooltip);
+}
+
+.cp-body { display: flex; flex-direction: column; gap: var(--space-2); }
+.cp-main { display: flex; gap: var(--space-2); }
+.cp-sv  { width: 150px; height: 150px; border-radius: 4px; cursor: crosshair; }
+.cp-hue { width: 16px; height: 150px; border-radius: 4px; cursor: crosshair; }
+.cp-bottom { display: flex; align-items: center; gap: var(--space-2); }
+
+.cp-preview {
+  width: 32px;
+  height: 32px;
+  flex-shrink: 0;
+  border: 1px solid var(--border);
+  border-radius: 4px;
+}
+
+.cp-hex {
+  flex: 1;
+  min-width: 0;
+  padding: var(--space-1) var(--space-2);
+  background: var(--bg-base);
+  border: 1px solid var(--border);
+  border-radius: 4px;
+  color: var(--text);
+  font-family: var(--font-mono);
+  font-size: 0.75rem;
+}
+
+.cp-presets { display: flex; flex-wrap: wrap; gap: 4px; }
+
+.cp-swatch {
+  width: 22px;
+  height: 22px;
+  border: 1px solid var(--border);
+  border-radius: 4px;
+  cursor: pointer;
+  transition: transform var(--duration-fast) var(--ease-out),
+              border-color var(--duration-fast) var(--ease-standard);
+}
+
+.cp-swatch:hover {
+  transform: scale(1.15);
+  border-color: var(--violet);
+}
+
+/* ─────────────────────────────────────────────────────────────
+   Focus — one ring, everywhere
+   ───────────────────────────────────────────────────────────── */
+
+:where(button, input, select, textarea, a, [tabindex]):focus-visible {
+  outline: 2px solid var(--cyan);
+  outline-offset: 3px;
+  border-radius: var(--radius-sm);
+}
+
+/* Inputs already signal focus with a border; the ring would double up */
+.prop-row input:focus-visible,
+.cp-hex:focus-visible {
+  outline: none;
+  border-color: var(--violet);
+  box-shadow: 0 0 0 3px rgba(124, 58, 237, 0.15);
+}
+
+/* ─────────────────────────────────────────────────────────────
+   Responsive — panels become drawers, never vanish
+   ───────────────────────────────────────────────────────────── */
+
+.drawer-toggle { display: none; }
+
+/* Sits below the drawers. Sharing --z-dropdown would let the scrim paint over
+   the panel it is supposed to sit behind, because it comes later in the DOM. */
+.drawer-scrim {
+  position: fixed;
+  inset: 0;
+  display: none;
+  background: var(--bg-overlay);
+  z-index: var(--z-raised);
+}
+
+.drawer-scrim.is-open { display: block; }
+
+@media (max-width: 1180px) {
+  #sidebar-left  { width: 232px; }
+  #sidebar-right { width: 256px; }
+  .topbar-center { justify-content: flex-start; overflow-x: auto; }
+}
+
+@media (max-width: 900px) {
+  .page-title { display: none; }
+
+  .drawer-toggle {
+    display: inline-flex;
+  }
+
+  /*
+   * Both panels leave the flow and become overlays. Hiding them outright
+   * (display:none) would take the tools away with no way back.
+   */
+  #sidebar-left,
+  #sidebar-right {
+    position: fixed;
+    top: var(--topbar-h);
+    bottom: 0;
+    z-index: var(--z-dropdown);
+    width: min(300px, 84vw);
+    transform: translateX(-100%);
+    transition: transform var(--duration-base) var(--ease-out);
+  }
+
+  #sidebar-right {
+    right: 0;
+    left: auto;
+    transform: translateX(100%);
+  }
+
+  #sidebar-left.is-open,
+  #sidebar-right.is-open { transform: translateX(0); }
+
+  #canvas-area { padding: var(--space-3); }
+}
+
+@media (max-width: 620px) {
+  /*
+   * A single row cannot hold both drawer toggles plus every file action at this
+   * width, and overflow would push the inspector toggle off-screen. The bar wraps:
+   * identity and both drawers stay on row one, the actions get their own
+   * swipeable strip rather than being dropped.
+   */
+  #topbar {
+    --topbar-h: 100px;
+    height: var(--topbar-h);
+    flex-wrap: wrap;
+    align-content: center;
+    gap: var(--space-2);
+    padding: 0 var(--space-2) var(--space-2);
+  }
+
+  .topbar-left  { flex: 1; }
+  .topbar-center{ display: none; }
+  .logo { font-size: 0.9rem; }
+
+  .topbar-right {
+    order: 3;
+    width: 100%;
+    overflow-x: auto;
+    scrollbar-width: none;
+    padding-bottom: 2px;
+  }
+
+  .topbar-right::-webkit-scrollbar { display: none; }
+  .topbar-right .divider { display: none; }
+
+  /* Icon-only for the secondary file actions; titles stay as the accessible name */
+  .tb-btn.action span { display: none; }
+  .tb-btn.action { padding: 0 var(--space-2); }
+
+  .tool-group { grid-template-columns: repeat(2, 1fr); }
+
+  /* Touch targets, not mouse targets */
+  .tb-btn { height: 36px; min-width: 36px; }
+  .tool-btn { min-height: 64px; }
+  .layer-item .leye,
+  .layer-item .llock { width: 32px; height: 32px; }
+  .cp-sv, .cp-hue { height: 130px; }
+}
+
+/* ─────────────────────────────────────────────────────────────
+   Reduced motion
+   ───────────────────────────────────────────────────────────── */
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
+  }
+
+  /* Drawer movement becomes an instant swap, not a slide */
+  #sidebar-left,
+  #sidebar-right { transition: none; }
+}
+
+/* ─────────────────────────────────────────────────────────────
+   Legacy variable bridge
+   editor.js still injects three pre-token names through inline styles.
+   Mapping them here keeps those call sites working without a JS rewrite.
+   --border and --danger already exist in tokens.css, so they are left alone.
+   ───────────────────────────────────────────────────────────── */
+
+:root {
+  --card: var(--bg-card);
+  --accent: var(--violet);
+  --text2: var(--muted);
+}
